@@ -1,23 +1,22 @@
 /**
- * AIDialog — AI 原生对话框（每页顶部复用）
+ * AIDialog — AI 操作台（每页顶部复用）
  *
- * 设计依据（来自 [docs/requirements-draft/requirements-draft-v40-mvp-redesign.md]）：
- *   - "几乎每个页面顶部都有一个 AI 对话框"
- *   - "对话框根据菜单/系统的功能来做各种操作"
- *   - "操作通常基于浏览器插件"
- *   - "提示词输入框 + 大模型处理结果显示"
+ * 设计依据（V4 草稿）：
+ *   - 几乎每个页面顶部都有一个 AI 对话框
+ *   - 提示词输入 + 大模型处理结果显示
+ *   - 操作基于浏览器插件
  *
- * 逻辑要点：
- *   1. 状态机：idle（空） → composing（输入中） → running（执行中） → result（结果）
- *   2. 子组件决定 prompt 模板和结果如何渲染（slot 模式）
- *   3. 历史记录：每次提交都进 messages 列表，可回滚查看
- *   4. 占位符按上下文不同（每页传 contextHint）
+ * V4.1 修订：
+ *   - 移除重复的 🤖 图标（title prop 不再含 emoji，单独一个 span 显示）
+ *   - 移除 "AI 原生" 徽标（标题统一为 "AI 操作台"）
+ *   - 消息顺序改为「倒序」（最新在顶部，旧的向下推）
+ *     * 用户阅读位置不变，新消息直接出现在对话顶部
+ *     * 历史消息向下排列，可滚动查看
  *
- * 暂为本地 mock：调用方传入 onSubmit，组件本身不发请求，
- *   等待后端 Skill 接通后接入。
+ * 状态机：idle（空） → composing（输入中） → running（执行中） → result（结果）
  */
-import { useState } from 'react';
-import { Card, Button, Badge } from './ui';
+import { useEffect, useRef, useState } from 'react';
+import { Card, Button } from './ui';
 
 export type AIMessage = {
   id: string;
@@ -34,14 +33,21 @@ type AIDialogProps = {
   onSubmit: (prompt: string) => Promise<string> | string;
   /** 预设按钮（常见操作） */
   presets?: { id: string; label: string; prompt: string }[];
-  /** 顶部标签文案 */
+  /** 顶部标题（默认 "AI 操作台"） */
   title?: string;
 };
 
-export function AIDialog({ contextHint, onSubmit, presets, title = '🤖 AI 操作台' }: AIDialogProps) {
+export function AIDialog({ contextHint, onSubmit, presets, title = 'AI 操作台' }: AIDialogProps) {
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [composing, setComposing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // 倒序展示：最新在顶部。DOM 顺序保持正序，CSS flex-col-reverse 让视觉倒过来。
+  // 这样新增消息自然出现在"顶部位置"（用户阅读的当前位置），无需 auto-scroll。
+  const reversed = [...messages].reverse();
+
+  // 不主动 scrollIntoView，让用户保留自己的阅读位置
 
   async function send(rawPrompt?: string) {
     const text = (rawPrompt ?? prompt).trim();
@@ -76,12 +82,11 @@ export function AIDialog({ contextHint, onSubmit, presets, title = '🤖 AI 操�
 
   return (
     <Card className="border-2 border-[var(--color-primary)]/30 bg-gradient-to-br from-indigo-50/40 via-white to-purple-50/30">
-      {/* 标题行 */}
+      {/* 标题行：单图标 + 标题 */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🤖</span>
+          <span className="text-base" aria-hidden>🤖</span>
           <span className="font-semibold text-sm">{title}</span>
-          <Badge tone="ok">AI 原生</Badge>
         </div>
         {messages.length > 0 && (
           <button
@@ -135,10 +140,14 @@ export function AIDialog({ contextHint, onSubmit, presets, title = '🤖 AI 操�
         提示: Cmd/Ctrl + Enter 发送 · 数据通过浏览器插件采集
       </p>
 
-      {/* 对话历史 */}
+      {/* 对话历史（倒序：最新在顶部） */}
       {messages.length > 0 && (
-        <div className="mt-3 border-t border-[var(--color-border)] pt-3 space-y-2 max-h-72 overflow-y-auto">
-          {messages.map((m) =>
+        <div
+          ref={scrollRef}
+          className="mt-3 border-t border-[var(--color-border)] pt-3 flex flex-col-reverse gap-2 max-h-80 overflow-y-auto"
+        >
+          {/* 用 reversed 让最新消息在顶部；插入新消息时不会触发 scroll */}
+          {reversed.map((m) =>
             m.role === 'user' ? (
               <div key={m.id} className="flex justify-end">
                 <div className="max-w-[80%] rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] px-3 py-2 text-sm">
