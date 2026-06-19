@@ -61,7 +61,7 @@ export function AppLayout() {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-base tracking-tight">{PRODUCT_NAME}</span>
-            <span className="text-xs opacity-60">跨境运营工作台</span>
+            <span className="text-xs opacity-60">电商运营助手</span>
           </div>
           <span className="ml-auto rounded-md bg-[var(--color-primary)] px-1.5 py-0.5 text-[10px] text-white font-medium">v3.0</span>
         </div>

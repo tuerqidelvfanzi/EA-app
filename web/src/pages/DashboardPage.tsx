@@ -6,30 +6,30 @@ import { downloadExtensionZip } from "../lib/extension";
 import { useMetrics } from "../hooks/useAppQueries";
 import { isDemoMode } from "../lib/demoConfig";
 
-// \u5f53\u524d\u5c55\u793a\u8303\u56f4\uff08\u4f1a\u8bae 12:00-17:00 \u5171\u8bc6\uff09\uff1a
-// 3 \u5927\u6838\u5fc3\uff1a\u9009\u54c1 / \u6807\u9898\u4f18\u5316 / \u7ade\u54c1\u5206\u6790\uff1b\u652f\u6491\uff1a\u91c7\u96c6\u7bb1 / \u94fe\u63a5\u76f4\u91c7 / \u6279\u91cf\u91c7\u96c6
+// 当前展示范围（会议 12:00-17:00 共识）：
+// 3 大核心：选品 / 标题优化 / 竞品分析；支撑：采集箱 / 链接直采 / 批量采集
 const QUICK_ACTIONS = [
-  { icon: "\ud83c\udfaf", label: "\u9009\u54c1", desc: "\u63d2\u4ef6\u91c7\u96c6 \u2192 Skill \u5206\u6790 \u2192 \u9009\u54c1\u62a5\u544a", to: "/app/insights" },
-  { icon: "\ud83d\udd0d", label: "\u7ade\u54c1\u5206\u6790", desc: "\u8f93\u5165\u94fe\u63a5 \u2192 \u81ea\u52a8\u5206\u6790 \u2192 \u8f93\u51fa\u7ed3\u8bba", to: "/app/competitors" },
-  { icon: "\u270f\ufe0f", label: "\u6807\u9898\u4f18\u5316", desc: "\u5bfc\u5165\u8868\u683c \u2192 \u9884\u8bbe\u89c4\u5219 \u2192 \u4e0a\u67b6\u6807\u9898", to: "/app/title-optimization" },
-  { icon: "\ud83d\udce5", label: "\u91c7\u96c6\u7bb1", desc: "\u63d2\u4ef6/\u94fe\u63a5/\u6279\u91cf\u91c7\u96c6\u5546\u54c1", to: "/app/inbox" },
-  { icon: "\ud83d\udd17", label: "\u94fe\u63a5\u76f4\u91c7", desc: "\u7c98\u8d34\u5546\u54c1\u94fe\u63a5\u4e00\u952e\u91c7\u96c6", to: "/app/link-collect" },
-  { icon: "\u26a1", label: "\u6279\u91cf\u91c7\u96c6", desc: "\u699c\u5355/\u641c\u7d22\u9875\u6279\u91cf\u5165\u5e93", to: "/app/batch-collect" },
+  { icon: "🎯", label: "选品", desc: "插件采集 → Skill 分析 → 选品报告", to: "/app/insights" },
+  { icon: "🔍", label: "竞品分析", desc: "输入链接 → 自动分析 → 输出结论", to: "/app/competitors" },
+  { icon: "✏️", label: "标题优化", desc: "导入表格 → 预设规则 → 上架标题", to: "/app/title-optimization" },
+  { icon: "📥", label: "采集箱", desc: "插件/链接/批量采集商品", to: "/app/inbox" },
+  { icon: "🔗", label: "链接直采", desc: "粘贴商品链接一键采集", to: "/app/link-collect" },
+  { icon: "⚡", label: "批量采集", desc: "榜单/搜索页批量入库", to: "/app/batch-collect" },
 ];
 
 const ACTIVITIES = [
-  { time: "\u4eca\u5929 10:30", text: "\u63d2\u4ef6\u91c7\u96c6\u300c\u97e9\u7248\u7ae5\u88c5\u8fde\u8863\u88d9\u300d\u5165\u91c7\u96c6\u7bb1" },
-  { time: "\u4eca\u5929 10:25", text: "\u9009\u54c1 Skill \u5206\u6790\u5b8c\u6210\uff0c\u53d1\u6398 3 \u6b3e\u503c\u5f97\u63a8\u5e7f\u5019\u9009" },
-  { time: "\u4eca\u5929 09:50", text: "\u6807\u9898\u4f18\u5316\uff1a\u5bfc\u5165 50 \u884c \u2192 \u8f93\u51fa 48 \u6761\u4e0a\u67b6\u6807\u9898" },
-  { time: "\u6628\u5929 18:30", text: "\u7ade\u54c1\u5206\u6790\uff1a\u8f93\u5165\u6dd8\u5b9d\u5546\u54c1\u94fe\u63a5 \u2192 \u8f93\u51fa\u7ed3\u8bba\u62a5\u544a" },
-  { time: "\u6628\u5929 15:20", text: "\u6279\u91cf\u91c7\u96c6\u300c\u7ae5\u88c5 TOP \u699c\u300d30 \u6b3e\u5165\u91c7\u96c6\u7bb1" },
+  { time: "今天 10:30", text: "插件采集「韩版童装连衣裙」入采集箱" },
+  { time: "今天 10:25", text: "选品 Skill 分析完成，发掘 3 款值得推广候选" },
+  { time: "今天 09:50", text: "标题优化：导入 50 行 → 输出 48 条上架标题" },
+  { time: "昨天 18:30", text: "竞品分析：输入淘宝商品链接 → 输出结论报告" },
+  { time: "昨天 15:20", text: "批量采集「童装 TOP 榜」30 款入采集箱" },
 ];
 
 export function DashboardPage() {
   const { data: m, isLoading } = useMetrics();
   const demo = isDemoMode();
   const stat = (val: number | undefined, suffix = "") =>
-    isLoading ? "\u2014" : (val ?? 0) + suffix;
+    isLoading ? "—" : (val ?? 0) + suffix;
 
   return (
     <div className="space-y-6">
@@ -39,16 +39,18 @@ export function DashboardPage() {
         <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
         <div className="relative">
           <div className="flex items-center gap-3 mb-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-medium">v3.0 \u00b7 MVP \u8303\u56f4</span>
-            {demo && <span className="px-2.5 py-0.5 rounded-full bg-amber-400/30 text-xs font-medium">\u2728 \u6f14\u793a\u7248</span>}
+            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-medium">v3.0 · MVP 范围</span>
+            {demo && <span className="px-2.5 py-0.5 rounded-full bg-amber-400/30 text-xs font-medium">✨ 演示版</span>}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">\u7535\u5546\u52a9\u624b</h1>
-          <p className="mt-2 text-white/70 max-w-md">\u5f53\u524d\u5c55\u793a\u8303\u56f4\uff1a\u9009\u54c1 \u00b7 \u7ade\u54c1\u5206\u6790 \u00b7 \u6807\u9898\u4f18\u5316 \u2014 \u63d2\u4ef6\u91c7\u96c6 \u2192 \u540e\u7aef Skill \u5206\u6790 \u2192 \u62a5\u544a\u8f93\u51fa</p>
+          <h1 className="text-3xl font-bold tracking-tight">电商助手</h1>
+          <p className="mt-2 text-white/70 max-w-md">
+            当前展示范围：选品 · 竞品分析 · 标题优化 — 插件采集 → 后端 Skill 分析 → 报告输出
+          </p>
           <div className="flex gap-3 mt-6">
             <Link to="/app/insights">
-              <Button className="bg-white text-indigo-700 hover:bg-white/90 font-medium shadow-lg">\u5f00\u59cb\u9009\u54c1</Button>
+              <Button className="bg-white text-indigo-700 hover:bg-white/90 font-medium shadow-lg">开始选品</Button>
             </Link>
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={downloadExtensionZip}>\u4e0b\u8f7d\u63d2\u4ef6</Button>
+            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={downloadExtensionZip}>下载插件</Button>
           </div>
         </div>
       </div>
@@ -56,10 +58,10 @@ export function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "\u91c7\u96c6\u7bb1", value: stat(m?.rawCount), sub: "\u5df2\u91c7\u96c6\u5546\u54c1", color: "from-amber-50 to-orange-50 border-amber-200", icon: "\ud83d\udce6" },
-          { label: "\u9009\u54c1\u5019\u9009", value: stat(m?.processingCount), sub: "Skill \u5206\u6790\u4e2d", color: "from-blue-50 to-sky-50 border-blue-200", icon: "\ud83c\udfaf" },
-          { label: "\u4eca\u65e5\u65b0\u589e", value: stat(m ? Math.floor(m.rawCount * 0.3) : undefined), sub: "\u4eca\u65e5\u91c7\u96c6", color: "from-purple-50 to-violet-50 border-purple-200", icon: "\u2601\ufe0f" },
-          { label: "\u503c\u5f97\u63a8\u5e7f", value: stat(m?.publishedCount), sub: "\u9009\u54c1\u7ed3\u8bba\u547d\u4e2d", color: "from-green-50 to-emerald-50 border-green-200", icon: "\u2705" },
+          { label: "采集箱", value: stat(m?.rawCount), sub: "已采集商品", color: "from-amber-50 to-orange-50 border-amber-200", icon: "📦" },
+          { label: "选品候选", value: stat(m?.processingCount), sub: "Skill 分析中", color: "from-blue-50 to-sky-50 border-blue-200", icon: "🎯" },
+          { label: "今日新增", value: stat(m ? Math.floor(m.rawCount * 0.3) : undefined), sub: "今日采集", color: "from-purple-50 to-violet-50 border-purple-200", icon: "☁️" },
+          { label: "值得推广", value: stat(m?.publishedCount), sub: "选品结论命中", color: "from-green-50 to-emerald-50 border-green-200", icon: "✅" },
         ].map((kpi) => (
           <Card key={kpi.label} className={"border bg-gradient-to-br " + kpi.color}>
             <div className="flex items-center justify-between mb-2">
@@ -76,7 +78,7 @@ export function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Quick Actions */}
         <Card className="lg:col-span-1">
-          <h3 className="font-semibold mb-4">\u5feb\u901f\u5165\u53e3</h3>
+          <h3 className="font-semibold mb-4">快速入口</h3>
           <div className="space-y-2">
             {QUICK_ACTIONS.map((a) => (
               <Link key={a.label} to={a.to} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--color-muted)] transition group">
@@ -85,7 +87,7 @@ export function DashboardPage() {
                   <div className="font-medium text-sm">{a.label}</div>
                   <div className="text-xs text-[var(--color-text-muted)] truncate">{a.desc}</div>
                 </div>
-                <span className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition">\u2192</span>
+                <span className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition">→</span>
               </Link>
             ))}
           </div>
@@ -93,7 +95,7 @@ export function DashboardPage() {
 
         {/* Workflow */}
         <Card className="lg:col-span-2">
-          <h3 className="font-semibold mb-4">\u6807\u51c6\u4f5c\u4e1a\u6d41\u7a0b</h3>
+          <h3 className="font-semibold mb-4">标准作业流程</h3>
           <WorkflowGuide />
         </Card>
       </div>
@@ -101,7 +103,7 @@ export function DashboardPage() {
       {/* Activity Feed + Focus */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h3 className="font-semibold mb-4">\u8fd1\u671f\u6d3b\u52a8</h3>
+          <h3 className="font-semibold mb-4">近期活动</h3>
           <div className="space-y-4">
             {ACTIVITIES.map((a, i) => (
               <div key={i} className="flex gap-3">
@@ -119,12 +121,12 @@ export function DashboardPage() {
         </Card>
 
         <Card>
-          <h3 className="font-semibold mb-4">\u5f53\u524d\u805a\u7126</h3>
+          <h3 className="font-semibold mb-4">当前聚焦</h3>
           <div className="space-y-4">
             {[
-              { title: "\u9009\u54c1", desc: "\u7ae5\u88c5 / T\u6064\u7c7b\u76ee \u00b7 \u540e\u7aef Skill \u5206\u6790 \u00b7 \u8f93\u51fa\u503c\u5f97\u63a8\u5e7f\u5019\u9009", icon: "\ud83c\udfaf" },
-              { title: "\u6807\u9898\u4f18\u5316", desc: "\u5bfc\u5165\u8868\u683c \u2192 \u9884\u8bbe\u89c4\u5219\uff08\u53bb\u5e9f\u8bcd / \u8865\u70ed\u641c\uff09\u2192 \u4e0a\u67b6\u6807\u9898", icon: "\u270f\ufe0f" },
-              { title: "\u7ade\u54c1\u5206\u6790", desc: "\u8f93\u5165\u5546\u54c1\u94fe\u63a5 \u2192 \u81ea\u52a8\u5206\u6790 \u2192 \u8f93\u51fa\u7ed3\u8bba", icon: "\ud83d\udd0d" },
+              { title: "选品", desc: "童装 / T恤类目 · 后端 Skill 分析 · 输出值得推广候选", icon: "🎯" },
+              { title: "标题优化", desc: "导入表格 → 预设规则（去废词 / 补热搜）→ 上架标题", icon: "✏️" },
+              { title: "竞品分析", desc: "输入商品链接 → 自动分析 → 输出结论", icon: "🔍" },
             ].map((item) => (
               <div key={item.title} className="p-4 rounded-xl bg-[var(--color-muted)]">
                 <div className="flex items-center gap-2 mb-1">
