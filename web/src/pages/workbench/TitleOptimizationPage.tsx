@@ -387,14 +387,14 @@ export function TitleOptimizationPage() {
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-primary-soft)] text-xs font-semibold text-[var(--color-primary)]">
             3
           </span>
-          <h3 className="font-medium">一键优化（后端 Skill 执行）</h3>
+          <h3 className="font-medium">一键优化（管线执行）</h3>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={handleOptimize} disabled={running || rows.length === 0}>
             {running ? `优化中 ${progress.done}/${progress.total}` : '🚀 开始批量优化'}
           </Button>
           <span className="text-xs text-muted">
-            共 {rows.length} 行 · 预计按后端 Skill 流程逐步执行
+            共 {rows.length} 行 · 预计按管线流程逐步执行
           </span>
         </div>
 

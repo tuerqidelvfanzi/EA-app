@@ -12,9 +12,10 @@
  *   4. V4.2：选品报告每条可点击展开详情（命中的维度规则）
  *
  * 模板入口说明：
- *   - 选品模板是后端分析流程的参数集（GMV 阈值 / CTR 阈值 / 同款数 / 价格段 等）
+ *   - 选品模板是后端管线流程的参数集（GMV 阈值 / CTR 阈值 / 同款数 / 价格段 等）
  *   - 模板数据来自后端 /api/selection-templates，本地 mock 提供 3 个国家的示例
  *   - V4.2：术语统一「后端分析」替换原「Skill」（用户 06-19 反馈）
+ *   - V4.3：进一步统一为「管线 / 工作流」（用户 06-19 反馈，避免「Skill」歧义）
  */
 import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -84,7 +85,7 @@ interface SelectionItem {
   ctr: number;
   sameProductCount: number;
   rating: number;
-  /** 选品后端分析输出：值得推广 / 观察 / 跳过 */
+  /** 选品管线分析输出：值得推广 / 观察 / 跳过 */
   recommendation: Recommendation;
   /** 命中的维度（GMV / CTR / 同款数 / 利润 / 趋势） */
   matchedDimensions: string[];
@@ -237,7 +238,7 @@ export function InsightsPage() {
     <div className="space-y-4">
       <PageHeader
         title="选品"
-        desc="插件采集 → 后端分析（多维度）→ 输出值得推广候选"
+        desc="插件采集 → 管线分析（多维度）→ 输出值得推广候选"
       />
 
       {/* AI 对话框（V4 新增） */}
@@ -248,7 +249,7 @@ export function InsightsPage() {
           { id: 'switch', label: '🌏 切换选品模板', prompt: '切换到其他市场的选品模板' },
           { id: 'export', label: '📤 导出候选', prompt: '把值得推广候选导出为 CSV' },
         ]}
-        onSubmit={(p) => `已记录选品指令: "${p}"（本地 mock，未接通后端分析）`}
+        onSubmit={(p) => `已记录选品指令: "${p}"（本地 mock，未接通后端管线）`}
       />
 
       {/* 选品模板（V4 新增：暴露给前端 · V4.2 可点击切换激活） */}
@@ -345,7 +346,7 @@ export function InsightsPage() {
             </div>
           </div>
 
-          {/* Step 3 · 后端分析 */}
+          {/* Step 3 · 管线分析 */}
           <div className="rounded-lg border border-[var(--color-border)] p-3">
             <div className="flex items-center gap-2 mb-2">
               <StepBadge
@@ -358,7 +359,7 @@ export function InsightsPage() {
                     : 'pending'
                 }
               />
-              <p className="font-medium text-sm">后端分析</p>
+              <p className="font-medium text-sm">管线分析</p>
             </div>
             <ul className="text-xs space-y-1">
               <li className={analysisStep >= 1 ? 'text-[var(--color-primary)]' : 'text-muted'}>
@@ -529,7 +530,7 @@ export function InsightsPage() {
                             </ul>
                           </div>
                           <div>
-                            <p className="font-medium mb-1">🎯 后端分析输出</p>
+                            <p className="font-medium mb-1">🎯 管线分析输出</p>
                             <p className="text-muted">{item.reason}</p>
                           </div>
                           <div>

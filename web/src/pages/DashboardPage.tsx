@@ -29,7 +29,7 @@ import { isDemoMode } from "../lib/demoConfig";
 
 const KPI_FUNNEL = [
   { id: "collected", label: "已采集", desc: "进入采集箱的商品数", color: "from-amber-50 to-orange-50 border-amber-200", icon: "📥" },
-  { id: "selected", label: "已选品", desc: "完成 Skill 分析 · 待改写", color: "from-blue-50 to-sky-50 border-blue-200", icon: "🎯" },
+  { id: "selected", label: "已选品", desc: "完成管线分析 · 待改写", color: "from-blue-50 to-sky-50 border-blue-200", icon: "🎯" },
   { id: "rewriting", label: "改写中", desc: "管线处理中 · 待上架", color: "from-purple-50 to-violet-50 border-purple-200", icon: "✏️" },
   { id: "published", label: "待上架", desc: "改写完成 · 写入草稿箱", color: "from-green-50 to-emerald-50 border-green-200", icon: "🚀" },
 ] as const;
@@ -51,7 +51,7 @@ export function DashboardPage() {
           { id: "publish", label: "🚀 写入草稿箱", prompt: "把改写完成的商品写入目标平台草稿箱" },
         ]}
         onSubmit={(p) =>
-          `已收到指令: "${p}"\n\n提示：当前为前端 mock，未接通后端 Skill 时会先解析为本地动作建议。完整执行需要后端 Skill + 浏览器插件。`
+          `已收到指令: "${p}"\n\n提示：当前为前端 mock，未接通后端管线时会先解析为本地动作建议。完整执行需要后端管线 + 浏览器插件。`
         }
       />
 
@@ -124,7 +124,7 @@ export function DashboardPage() {
             <span className="text-xs text-[var(--color-text-muted)]">今天 10:30</span>
           </li>
           <li className="flex justify-between border-b border-[var(--color-border)] pb-2">
-            <span>选品 Skill 分析完成：发掘 3 款值得推广候选</span>
+            <span>选品管线分析完成：发掘 3 款值得推广候选</span>
             <span className="text-xs text-[var(--color-text-muted)]">今天 10:25</span>
           </li>
           <li className="flex justify-between border-b border-[var(--color-border)] pb-2">

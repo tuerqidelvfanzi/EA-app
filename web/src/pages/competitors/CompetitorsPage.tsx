@@ -224,7 +224,7 @@ export function CompetitorsPage() {
           <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs text-[var(--color-text-muted)]">
             <div>○ 访问原商品页</div>
             <div>○ 抽取标题/价格/SKU</div>
-            <div>{hasCompare ? '○ 访问对比商品' : '○ 调用 Skill 分析'}</div>
+            <div>{hasCompare ? '○ 访问对比商品' : '○ 调用管线分析'}</div>
             <div>○ 生成{mode === 'compare' ? '对比' : '单品'}结论</div>
           </div>
         </Card>
