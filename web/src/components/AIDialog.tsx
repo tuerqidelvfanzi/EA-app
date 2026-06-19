@@ -6,12 +6,19 @@
  *   - 提示词输入 + 大模型处理结果显示
  *   - 操作基于浏览器插件
  *
- * V4.2 修订（基于 AIDialog 用户反馈 — 新消息总是出现在最下端）：
- *   - 修复"双反向"bug：去掉 reversed 数组，只用 flex-col-reverse（CSS 翻一次）
- *   - DOM 顺序保持正序（oldest→newest），视觉倒序（newest 在顶部）
- *   - 新消息到来时 useEffect 把 scrollTop 推到 scrollHeight
- *     * flex-col-reverse 下，scrollHeight 对应"视觉顶部"
- *     * 新消息自动露在最上面，用户视线不用动
+ * V4.3 修订（V4.2 改完后用户实测反馈：flex-col-reverse 在该项目中未生效，
+ *            新消息仍出现在最下端）：
+ *   - 改用"数据反向 + 普通 flex-col"方案（替代 flex-col-reverse）
+ *   - reversed = [...messages].reverse()，最新消息在数组首位
+ *   - 普通 flex-col：数组首位 = DOM 首位 = 视觉顶部
+ *   - 视觉顺序：newest 在顶部，oldest 向下推
+ *   - useEffect 把 scrollTop 设为 0，让滚动条停在顶部（newest 位置）
+ *     * 不动 = 用户视线保持
+ *     * 新消息直接出现在阅读位置
+ *
+ * V4.2 修订（V4.1 改完后用户反馈"双反向"bug：数组 reverse + CSS reverse 互相抵消）：
+ *   - 去掉 reversed 数组，只用 flex-col-reverse（CSS 翻一次）
+ *   - 经 V4.3 实测，此方案在该项目中未生效，回退到"数据反向"
  *
  * V4.1 修订：
  *   - 移除重复的 🤖 图标（title prop 不再含 emoji，单独一个 span 显示）
@@ -47,12 +54,13 @@ export function AIDialog({ contextHint, onSubmit, presets, title = 'AI 操作台
   const [composing, setComposing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 视觉倒序：DOM 顺序保持正序（oldest → newest），CSS flex-col-reverse 让视觉倒过来（newest 在顶部）。
-  // 新消息到来时用 useEffect 把 scrollTop 推到 scrollHeight，让新消息自动露在视觉顶部。
+  // 视觉倒序：把 messages 倒过来再 map，newest 排在数组首位。
+  // 普通 flex-col 下，数组首位 = DOM 首位 = 视觉顶部 = 新消息位置。
+  // 新消息到来时把 scrollTop 设为 0，让滚动条停在顶部（用户视线不动）。
+  const reversed = [...messages].reverse();
   useEffect(() => {
     if (scrollRef.current && messages.length > 0) {
-      // flex-col-reverse 下，scrollTop 语义反转：scrollHeight 对应"视觉顶部"（newest）
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = 0;
     }
   }, [messages.length]);
 
@@ -151,10 +159,10 @@ export function AIDialog({ contextHint, onSubmit, presets, title = 'AI 操作台
       {messages.length > 0 && (
         <div
           ref={scrollRef}
-          className="mt-3 border-t border-[var(--color-border)] pt-3 flex flex-col-reverse gap-2 max-h-80 overflow-y-auto"
+          className="mt-3 border-t border-[var(--color-border)] pt-3 flex flex-col gap-2 max-h-80 overflow-y-auto"
         >
-          {/* 直接 map messages（DOM 正序），flex-col-reverse 负责视觉反转 */}
-          {messages.map((m) =>
+          {/* 用 reversed 让最新消息在 DOM 首位 = 视觉顶部 */}
+          {reversed.map((m) =>
             m.role === 'user' ? (
               <div key={m.id} className="flex justify-end">
                 <div className="max-w-[80%] rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] px-3 py-2 text-sm">
