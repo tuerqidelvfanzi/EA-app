@@ -7,17 +7,25 @@ export type NavGroup = {
 };
 
 /**
- * V3.0 菜单配置 - 当前展示范围 = 会议 12:00-17:00 共识
+ * V4 菜单配置（V3.0 → V4 重设计）
  *
- * 核心三大功能：
+ * 核心三大功能（V3 保持）：
  *   1. 选品（plugin → 采集 → 后端 Skill 分析 → 选品报告）
- *   2. 标题优化（导入表格 → 预设规则 → 输出上架标题）
- *   3. 竞品分析（输入商品链接 → 自动分析 → 输出结论）
+ *   2. 竞品分析（原商品 + 对比链接，单品画像 / 综合对比）
+ *   3. 处理中心（V4 扩展：标题优化 + 采集箱编辑能力）
  *
- * 支撑功能：Dashboard / 采集箱 / 链接直采 / 批量采集
+ * 支撑功能：
+ *   - Dashboard（V4 重设计：流程置顶 / 漏斗 KPI / AI 对话框）
+ *   - 采集箱（V4 改造计划中）
+ *   - 链接采集（V4 合并直采 + 批量 + AI 扩展 3 模式）
  *
- * 其他功能（工作台、发布、模板、规则、设置、主题、标题 V2、集成、团队）
- * 当前阶段隐去，路由保留供后续迭代。
+ * 隐藏功能（路由保留）：
+ *   - 批量采集（/app/batch-collect 已重定向到 /app/link-collect）
+ *   - 工作台 / 发布 / 模板 / 规则 / 设置 / 主题 / 标题 V2 / 集成 / 团队
+ *
+ * 设计原则（V4）：
+ *   - AI 原生：每页顶部对话框
+ *   - 流水线化：采集 → 选品 → 改写 → 上架
  */
 export const v3NavGroups: NavGroup[] = [
   {
@@ -40,8 +48,7 @@ export const v3NavGroups: NavGroup[] = [
     icon: '📦',
     items: [
       { to: '/app/inbox', label: '采集箱', icon: '📥' },
-      { to: '/app/link-collect', label: '链接直采', icon: '🔗' },
-      { to: '/app/batch-collect', label: '批量采集', icon: '⚡' },
+      { to: '/app/link-collect', label: '链接采集', icon: '🔗' },
     ],
   },
   {
