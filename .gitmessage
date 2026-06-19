@@ -1,0 +1,31 @@
+# <type>(<scope>): <subject>     ← 中文 subject, ≤ 50 字
+#
+# <body>                         ← 详细说明, 解释 "为什么" 而非 "做了什么"
+#
+# 影响页面: <route-list>          ← 例 /app/insights, /app/title-optimization
+# 字段变化: <list>                ← 例 add: score; rename: ctr→clickRate
+# 跨模块需求: <backlog-link|none>
+#
+# --- type (必填) ---
+#   feat:     新功能
+#   fix:      修复 bug
+#   refactor: 重构 (无功能变化)
+#   chore:    杂项 (依赖、配置、CI)
+#   docs:     文档
+#   style:    样式 (不改逻辑)
+#   test:     测试
+#   field:    字段增删改
+#   revert:   回滚
+#
+# --- scope (可选但强烈建议) ---
+#   限定到当前 MVP 出现的模块:
+#     dashboard | insights | competitors | title-optimization
+#     inbox | link-collect | batch-collect | workflow | layout | auth | ci
+#
+# --- 规则 ---
+# 1. 不在当前分支页面范围内的需求, 必须记录到
+#    .claude/requirements-backlog.md, 并在 footer 注明
+# 2. 新增模块前先 grep 原项目是否已有 (见 .claude/PORTING.md)
+# 3. 字段变化必须同步更新 mock 数据 (保持 schema 一致)
+# 4. 涉及原项目同步: 提前与 user 确认 sync 窗口
+# --------------------
