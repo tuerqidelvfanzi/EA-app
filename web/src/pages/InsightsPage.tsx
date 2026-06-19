@@ -6,13 +6,17 @@
  *   2. **选品模板放出来**：之前藏在设置里，现在暴露在选品页（用户可见）
  *      - 模板按国家/类目划分
  *      - 用户可查看当前生效的选品规则
+ *      - V4.2：模板可点击切换激活（用户 06-19 反馈）
+ *      - V4.2：「管理模板」链接到 /app/templates（替换原 /app/settings 错误链接）
  *   3. 保留原有四步流程可视化 + 选品报告
+ *   4. V4.2：选品报告每条可点击展开详情（命中的维度规则）
  *
  * 模板入口说明：
- *   - 选品模板是 Skill 流程的参数集（GMV 阈值 / CTR 阈值 / 同款数 / 价格段 等）
+ *   - 选品模板是后端分析流程的参数集（GMV 阈值 / CTR 阈值 / 同款数 / 价格段 等）
  *   - 模板数据来自后端 /api/selection-templates，本地 mock 提供 3 个国家的示例
+ *   - V4.2：术语统一「后端分析」替换原「Skill」（用户 06-19 反馈）
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader, Card, Button, Badge } from '../components/ui';
 import { AIDialog } from '../components/AIDialog';
@@ -32,6 +36,7 @@ type SelectionTemplate = {
     maxSameProduct: number;
     priceRange: [number, number];
   };
+  reportDimensions: string[];
   active: boolean;
 };
 
@@ -42,6 +47,7 @@ const MOCK_TEMPLATES: SelectionTemplate[] = [
     market: '越南',
     category: '童装',
     thresholds: { minGmv: 30000, minCtr: 9, maxSameProduct: 5, priceRange: [15, 60] },
+    reportDimensions: ['GMV', 'CTR', '同款数', '评分', '趋势', '毛利率'],
     active: true,
   },
   {
@@ -50,6 +56,7 @@ const MOCK_TEMPLATES: SelectionTemplate[] = [
     market: '泰国',
     category: '女装',
     thresholds: { minGmv: 25000, minCtr: 8, maxSameProduct: 6, priceRange: [10, 50] },
+    reportDimensions: ['GMV', 'CTR', '同款数', '评分', '趋势'],
     active: false,
   },
   {
@@ -58,6 +65,7 @@ const MOCK_TEMPLATES: SelectionTemplate[] = [
     market: '巴西',
     category: '3C 数码',
     thresholds: { minGmv: 50000, minCtr: 10, maxSameProduct: 4, priceRange: [40, 200] },
+    reportDimensions: ['GMV', 'CTR', '同款数', '评分', '认证'],
     active: false,
   },
 ];
@@ -76,7 +84,7 @@ interface SelectionItem {
   ctr: number;
   sameProductCount: number;
   rating: number;
-  /** 选品 Skill 输出：值得推广 / 观察 / 跳过 */
+  /** 选品后端分析输出：值得推广 / 观察 / 跳过 */
   recommendation: Recommendation;
   /** 命中的维度（GMV / CTR / 同款数 / 利润 / 趋势） */
   matchedDimensions: string[];
@@ -193,6 +201,16 @@ export function InsightsPage() {
   });
   const [analysisStep, setAnalysisStep] = useState(0); // 0..3
 
+  // V4.2：模板可切换激活（点击卡片）
+  const [templates, setTemplates] = useState<SelectionTemplate[]>(MOCK_TEMPLATES);
+  function activateTemplate(id: string) {
+    setTemplates((prev) => prev.map((t) => ({ ...t, active: t.id === id })));
+  }
+  const activeTpl = templates.find((t) => t.active) ?? templates[0];
+
+  // V4.2：选品报告每条可点击展开详情
+  const [expandedReport, setExpandedReport] = useState<string | null>(null);
+
   // 模拟「一键运行」：依次推进阶段
   function runFullPipeline() {
     setPhase('collecting');
@@ -219,7 +237,7 @@ export function InsightsPage() {
     <div className="space-y-4">
       <PageHeader
         title="选品"
-        desc="插件采集 → 后端 Skill 分析（多维度）→ 输出值得推广候选"
+        desc="插件采集 → 后端分析（多维度）→ 输出值得推广候选"
       />
 
       {/* AI 对话框（V4 新增） */}
@@ -230,38 +248,47 @@ export function InsightsPage() {
           { id: 'switch', label: '🌏 切换选品模板', prompt: '切换到其他市场的选品模板' },
           { id: 'export', label: '📤 导出候选', prompt: '把值得推广候选导出为 CSV' },
         ]}
-        onSubmit={(p) => `已记录选品指令: "${p}"（本地 mock，未接通 Skill）`}
+        onSubmit={(p) => `已记录选品指令: "${p}"（本地 mock，未接通后端分析）`}
       />
 
-      {/* 选品模板（V4 新增：暴露给前端） */}
+      {/* 选品模板（V4 新增：暴露给前端 · V4.2 可点击切换激活） */}
       <Card>
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium">📋 选品模板（按国家/类目）</h3>
-          <Link to="/app/settings" className="text-xs text-[var(--color-primary)] hover:underline">
+          <h3 className="font-medium">📋 选品模板（按国家/类目）— 点击卡片可切换激活</h3>
+          <Link to="/app/templates" className="text-xs text-[var(--color-primary)] hover:underline">
             管理模板 →
           </Link>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          {MOCK_TEMPLATES.map((tpl) => (
-            <div
+          {templates.map((tpl) => (
+            <button
               key={tpl.id}
-              className={`rounded-lg border p-3 ${
+              type="button"
+              onClick={() => activateTemplate(tpl.id)}
+              className={`text-left rounded-lg border p-3 transition cursor-pointer hover:shadow-md ${
                 tpl.active
-                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
-                  : 'border-[var(--color-border)]'
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)] ring-2 ring-[var(--color-primary)]/30'
+                  : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-primary)]/50'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="font-medium text-sm">{tpl.name}</span>
-                {tpl.active && <Badge tone="ok">当前</Badge>}
+                {tpl.active ? (
+                  <Badge tone="ok">✓ 当前激活</Badge>
+                ) : (
+                  <span className="text-xs text-[var(--color-text-muted)]">点击激活 →</span>
+                )}
               </div>
               <div className="text-xs text-[var(--color-text-muted)] space-y-1">
                 <div>GMV ≥ ${tpl.thresholds.minGmv.toLocaleString()}</div>
                 <div>CTR ≥ {tpl.thresholds.minCtr}%</div>
                 <div>同款 ≤ {tpl.thresholds.maxSameProduct}</div>
                 <div>价格 ${tpl.thresholds.priceRange[0]}–${tpl.thresholds.priceRange[1]}</div>
+                <div className="pt-1 border-t border-[var(--color-border)]/50 mt-2">
+                  报告维度: {tpl.reportDimensions.join(' / ')}
+                </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </Card>
@@ -318,7 +345,7 @@ export function InsightsPage() {
             </div>
           </div>
 
-          {/* Step 3 · Skill 分析 */}
+          {/* Step 3 · 后端分析 */}
           <div className="rounded-lg border border-[var(--color-border)] p-3">
             <div className="flex items-center gap-2 mb-2">
               <StepBadge
@@ -331,7 +358,7 @@ export function InsightsPage() {
                     : 'pending'
                 }
               />
-              <p className="font-medium text-sm">后端 Skill 分析</p>
+              <p className="font-medium text-sm">后端分析</p>
             </div>
             <ul className="text-xs space-y-1">
               <li className={analysisStep >= 1 ? 'text-[var(--color-primary)]' : 'text-muted'}>
@@ -400,67 +427,130 @@ export function InsightsPage() {
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr
-                  key={item.id}
-                  className={`border-b border-[var(--color-border)] last:border-0 ${
-                    item.recommendation === 'promote'
-                      ? 'bg-green-50/40 dark:bg-green-900/10'
-                      : ''
-                  }`}
-                >
-                  <td className="py-2">
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={item.thumbnail}
-                        alt=""
-                        className="h-10 w-10 rounded object-cover"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate max-w-xs">{item.title}</p>
-                        <p className="text-xs text-muted">评分 {item.rating}</p>
+                <Fragment key={item.id}>
+                  <tr
+                    key={`row-${item.id}`}
+                    onClick={() => setExpandedReport(expandedReport === item.id ? null : item.id)}
+                    className={`border-b border-[var(--color-border)] cursor-pointer hover:bg-[var(--color-primary-soft)] transition ${
+                      item.recommendation === 'promote'
+                        ? 'bg-green-50/40 dark:bg-green-900/10'
+                        : ''
+                    } ${expandedReport === item.id ? 'bg-[var(--color-primary-soft)]' : ''}`}
+                  >
+                    <td className="py-2">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={item.thumbnail}
+                          alt=""
+                          className="h-10 w-10 rounded object-cover"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-medium truncate max-w-xs">{item.title}</p>
+                          <p className="text-xs text-muted">评分 {item.rating}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-2 text-muted">{item.source}</td>
-                  <td className="py-2 text-right">¥{item.price}</td>
-                  <td className="py-2 text-right font-medium">${item.gmv.toLocaleString()}</td>
-                  <td className="py-2 text-right">
-                    <span
-                      className={
-                        item.ctr >= 9
-                          ? 'text-green-600 font-medium'
-                          : item.ctr >= 6
-                          ? 'text-orange-500'
-                          : 'text-muted'
-                      }
-                    >
-                      {item.ctr}%
-                    </span>
-                  </td>
-                  <td className="py-2 text-right">
-                    <span
-                      className={
-                        item.sameProductCount <= 5
-                          ? 'text-green-600 font-medium'
-                          : item.sameProductCount <= 10
-                          ? 'text-orange-500'
-                          : 'text-muted'
-                      }
-                    >
-                      {item.sameProductCount}
-                    </span>
-                  </td>
-                  <td className="py-2 text-center">
-                    <div className="flex flex-wrap gap-1 justify-center">
-                      {item.matchedDimensions.map((d) => (
-                        <Badge key={d}>{d}</Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-2 text-center">
-                    <RecommendationBadge rec={item.recommendation} />
-                  </td>
-                </tr>
+                    </td>
+                    <td className="py-2 text-muted">{item.source}</td>
+                    <td className="py-2 text-right">¥{item.price}</td>
+                    <td className="py-2 text-right font-medium">${item.gmv.toLocaleString()}</td>
+                    <td className="py-2 text-right">
+                      <span
+                        className={
+                          item.ctr >= 9
+                            ? 'text-green-600 font-medium'
+                            : item.ctr >= 6
+                            ? 'text-orange-500'
+                            : 'text-muted'
+                        }
+                      >
+                        {item.ctr}%
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <span
+                        className={
+                          item.sameProductCount <= 5
+                            ? 'text-green-600 font-medium'
+                            : item.sameProductCount <= 10
+                            ? 'text-orange-500'
+                            : 'text-muted'
+                        }
+                      >
+                        {item.sameProductCount}
+                      </span>
+                    </td>
+                    <td className="py-2 text-center">
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {item.matchedDimensions.map((d) => (
+                          <Badge key={d}>{d}</Badge>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-2 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <RecommendationBadge rec={item.recommendation} />
+                        <span className="text-[10px] text-[var(--color-text-muted)]">
+                          {expandedReport === item.id ? '收起 ▲' : '详情 ▼'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedReport === item.id && (
+                    <tr key={`detail-${item.id}`} className="bg-[var(--color-muted)]/50">
+                      <td colSpan={8} className="py-3 px-3">
+                        <div className="grid gap-3 md:grid-cols-3 text-xs">
+                          <div>
+                            <p className="font-medium mb-1">📐 维度明细（基于「{activeTpl?.name}」）</p>
+                            <ul className="space-y-0.5 text-muted">
+                              <li>GMV ≥ ${activeTpl?.thresholds.minGmv.toLocaleString()} →
+                                <span className={item.gmv >= (activeTpl?.thresholds.minGmv ?? 0) ? 'text-green-600' : 'text-red-500'}>
+                                  {' '}${item.gmv.toLocaleString()} {item.gmv >= (activeTpl?.thresholds.minGmv ?? 0) ? '✓' : '✗'}
+                                </span>
+                              </li>
+                              <li>CTR ≥ {activeTpl?.thresholds.minCtr}% →
+                                <span className={item.ctr >= (activeTpl?.thresholds.minCtr ?? 0) ? 'text-green-600' : 'text-red-500'}>
+                                  {' '}{item.ctr}% {item.ctr >= (activeTpl?.thresholds.minCtr ?? 0) ? '✓' : '✗'}
+                                </span>
+                              </li>
+                              <li>同款 ≤ {activeTpl?.thresholds.maxSameProduct} →
+                                <span className={item.sameProductCount <= (activeTpl?.thresholds.maxSameProduct ?? 0) ? 'text-green-600' : 'text-red-500'}>
+                                  {' '}{item.sameProductCount} {item.sameProductCount <= (activeTpl?.thresholds.maxSameProduct ?? 0) ? '✓' : '✗'}
+                                </span>
+                              </li>
+                              <li>价格 ${activeTpl?.thresholds.priceRange[0]}–${activeTpl?.thresholds.priceRange[1]} →
+                                <span className={
+                                  item.price >= (activeTpl?.thresholds.priceRange[0] ?? 0) &&
+                                  item.price <= (activeTpl?.thresholds.priceRange[1] ?? 0)
+                                    ? 'text-green-600' : 'text-red-500'
+                                }>
+                                  {' '}¥{item.price}
+                                </span>
+                              </li>
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="font-medium mb-1">🎯 后端分析输出</p>
+                            <p className="text-muted">{item.reason}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium mb-1">🚀 下一步动作</p>
+                            <div className="flex flex-wrap gap-1">
+                              <Link to={`/app/workbench/${item.id}`}>
+                                <Button size="sm" variant="outline">进入处理中心</Button>
+                              </Link>
+                              <Link to="/app/competitors">
+                                <Button size="sm" variant="outline">竞品对比</Button>
+                              </Link>
+                              <Link to="/app/title-optimization">
+                                <Button size="sm" variant="outline">标题优化</Button>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
