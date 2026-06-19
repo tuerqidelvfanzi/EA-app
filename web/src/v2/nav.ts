@@ -58,6 +58,14 @@ export const v3NavGroups: NavGroup[] = [
       { to: '/app/title-optimization', label: '标题优化', icon: '✏️' },
     ],
   },
+  {
+    title: '模板中心',
+    icon: '🧩',
+    items: [
+      { to: '/app/templates', label: '选品模板', icon: '🎯' },
+      { to: '/app/rewrite-templates', label: '改写模板', icon: '✍️' },
+    ],
+  },
 ];
 
 /** 兼容旧版扁平菜单 */

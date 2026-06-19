@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader, Card, Badge, Button, Input } from '../components/ui';
+import { AIDialog } from '../components/AIDialog';
 import { importCollectFromEncoded } from '../lib/collectImport';
 import { exportProductsCsv, exportProductsJson } from '../lib/exportUtils';
 import {
@@ -189,6 +190,21 @@ export function InboxPage() {
           </div>
         }
       />
+
+      {/* V4 R3: AI 对话框（采集箱） */}
+      <div className="mb-4">
+        <AIDialog
+          contextHint="例如：采集淘宝搜索「女童连衣裙」前 50 条；基于 #12 找相似款；批量把已采集商品按当前改写模板跑管线；…"
+          presets={[
+            { id: 'similar', label: '🔍 采集相似商品', prompt: '采集类似商品' },
+            { id: 'same-spec', label: '📐 同规格商品', prompt: '采集同规格商品' },
+            { id: 'same-type', label: '🏷️ 同类型商品', prompt: '采集同类型商品' },
+            { id: 'batch-run', label: '⚡ 批量跑管线', prompt: '对已勾选的商品批量运行改写管线' },
+          ]}
+          onSubmit={(p) => `已记录采集箱指令: "${p}"（本地 mock）`}
+        />
+      </div>
+
       {importMsg ? (
         <Card className="mb-4 border-[var(--color-primary)]">
           <p className="text-sm text-[var(--color-primary)]">{importMsg}</p>

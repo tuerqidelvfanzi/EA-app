@@ -27,6 +27,9 @@ import { LogisticsPanel } from '../../components/workbench/LogisticsPanel';
 import { ImageNineGridPanel } from '../../components/workbench/ImageNineGridPanel';
 import { ImageTasksPanel } from '../../components/workbench/ImageTasksPanel';
 import { FabricCheckBanner } from '../../components/workbench/FabricCheckBanner';
+import { AIDialog } from '../../components/AIDialog';
+import { REWRITE_TEMPLATE_EXAMPLES } from '../../lib/api/types';
+import type { RewriteTemplate } from '../../lib/api/types';
 
 const SHOPEE_VN_STEPS = [
   '选择店铺',
@@ -67,6 +70,22 @@ export function WorkbenchPage() {
   const [imageMsg, setImageMsg] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
   const [vnSteps, setVnSteps] = useState<boolean[]>(() => SHOPEE_VN_STEPS.map(() => false));
+
+  // V4 R2：改写模板驱动（按激活模板跑）+ 扩到全部目标
+  const [rewriteTplId, setRewriteTplId] = useState<string>('');
+  const [expandOpen, setExpandOpen] = useState(false);
+  const [expandTargets, setExpandTargets] = useState<RewriteTemplate[]>([]);
+  const [expandMsg, setExpandMsg] = useState('');
+
+  // 当前激活的改写模板（如果用户选了）；否则按目标 locale 自动匹配
+  const activeRewriteTpl = REWRITE_TEMPLATE_EXAMPLES.find((t) => t.id === rewriteTplId);
+  const defaultTpl = REWRITE_TEMPLATE_EXAMPLES.find((t) => t.targetLocale === locale) ?? REWRITE_TEMPLATE_EXAMPLES[0];
+  const effectiveTpl = activeRewriteTpl ?? defaultTpl;
+
+  // 「扩到全部目标」候选：所有其他可发布的目标（同品类）
+  const allTargetOptions = REWRITE_TEMPLATE_EXAMPLES.filter(
+    (t) => t.targetLocale !== locale && t.category === product?.category,
+  );
 
   const lastRun = runs[0];
   const output =
@@ -167,6 +186,18 @@ export function WorkbenchPage() {
             </Link>
           </div>
         }
+      />
+
+      {/* V4 R3: AI 对话框（处理工作台） */}
+      <AIDialog
+        contextHint="例如：按当前改写模板跑全流程；把这个商品扩到所有东南亚目标；基于竞品分析结果重新生成标题；…"
+        presets={[
+          { id: 'run-tpl', label: '⚡ 按模板跑', prompt: '按当前改写模板跑完整流程' },
+          { id: 'expand', label: '🌐 扩到全部目标', prompt: '把当前改写结果扩展到所有可发布目标' },
+          { id: 'recheck', label: '🔍 重新校验', prompt: '基于规则重新校验标题/SKU/价格' },
+          { id: 'rephrase', label: '✍️ 重新改写', prompt: '针对当前标题重新生成高曝光/高转化双版本' },
+        ]}
+        onSubmit={(p) => `已记录工作台指令: "${p}"（本地 mock）`}
       />
 
       {saveMsg ? (
@@ -280,6 +311,113 @@ export function WorkbenchPage() {
           >
             运行管线（Mock）
           </Button>
+
+          {/* V4 R2: 按改写模板跑 + 扩到全部目标 */}
+          <div className="mt-4 pt-3 border-t border-[var(--color-border)]">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-medium">🧩 改写模板驱动</span>
+              <Link to="/app/rewrite-templates" className="text-xs text-[var(--color-primary)] hover:underline">
+                管理模板 →
+              </Link>
+            </div>
+            <label className="text-sm block mb-2">
+              <span className="text-muted">改写模板（按 国家×平台×品类 自动匹配）</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-[var(--color-border)] px-3 py-2"
+                value={rewriteTplId}
+                onChange={(e) => setRewriteTplId(e.target.value)}
+              >
+                <option value="">自动匹配当前目标（{defaultTpl.name}）</option>
+                {REWRITE_TEMPLATE_EXAMPLES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}（{t.targetLocale} · {t.categoryMode}）
+                  </option>
+                ))}
+              </select>
+            </label>
+            {effectiveTpl && (
+              <div className="rounded-lg bg-[var(--color-muted)] p-2 text-xs mb-2">
+                <p className="font-medium mb-1">📋 模板规则摘要（{effectiveTpl.steps.length} 步）</p>
+                <p className="text-muted">定价 ×{effectiveTpl.pricing.multiplier} {effectiveTpl.pricing.currency} · 标题 ≤{effectiveTpl.title.maxChars}字 · 主图 {effectiveTpl.image.mainCount} 张 · SKU {effectiveTpl.skuSegments.join('×')}</p>
+                <p className="text-muted truncate">System: {effectiveTpl.systemPrompt.split('\n')[0]}</p>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  setSaveMsg(`已按模板「${effectiveTpl.name}」跑完整改写管线（${effectiveTpl.steps.length} 步）`);
+                  setTimeout(() => setSaveMsg(''), 3000);
+                }}
+              >
+                ⚡ 按模板跑（双策略）
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setExpandOpen(!expandOpen)}
+              >
+                🌐 扩到全部目标 →
+              </Button>
+            </div>
+
+            {expandOpen && (
+              <div className="mt-3 p-3 rounded-lg border border-dashed border-[var(--color-primary)]/50 bg-[var(--color-primary-soft)]">
+                <p className="text-sm font-medium mb-2">选择要扩展到的目标（同类目 · 不同国家/平台）</p>
+                {allTargetOptions.length === 0 ? (
+                  <p className="text-xs text-muted">当前品类「{product?.category}」暂无可扩展的目标（其它国家/平台的同类目模板未配置）</p>
+                ) : (
+                  <>
+                    <div className="space-y-1 mb-2">
+                      {allTargetOptions.map((t) => (
+                        <label key={t.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={expandTargets.find((x) => x.id === t.id) !== undefined}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setExpandTargets([...expandTargets, t]);
+                              } else {
+                                setExpandTargets(expandTargets.filter((x) => x.id !== t.id));
+                              }
+                            }}
+                          />
+                          <span>{t.name}</span>
+                          <Badge tone="default">{t.targetLocale}</Badge>
+                          <span className="text-xs text-muted">×{t.pricing.multiplier} {t.pricing.currency}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={expandTargets.length === 0}
+                        onClick={() => {
+                          setExpandMsg(`已基于当前改写结果，扩展到 ${expandTargets.length} 个目标（${expandTargets.map((t) => t.name).join(' / ')}）`);
+                          setExpandOpen(false);
+                          setExpandTargets([]);
+                          setTimeout(() => setExpandMsg(''), 5000);
+                        }}
+                      >
+                        ✓ 确认扩展 {expandTargets.length > 0 ? `(${expandTargets.length})` : ''}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setExpandOpen(false)}>
+                        取消
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {expandMsg && (
+              <div className="mt-2 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 text-xs text-green-700">
+                ✓ {expandMsg}
+              </div>
+            )}
+          </div>
         </Card>
 
         {locale === 'vi-VN' ? (

@@ -8,6 +8,7 @@ import { InboxPage } from './pages/InboxPage';
 import { LinkCollectPage } from './pages/link-collect/LinkCollectPage';
 import { BatchCollectPage } from './pages/BatchCollectPage';
 import { TemplatesPage } from './pages/TemplatesPage';
+import { RewriteTemplatesPage } from './pages/RewriteTemplatesPage';
 import { RulesPage } from './pages/RulesPage';
 import { InsightsPage } from './pages/InsightsPage';
 import { PublishPage } from './pages/PublishPage';
@@ -51,6 +52,7 @@ export function App() {
 
         {/* 配置中心 */}
         <Route path="/app/templates" element={<TemplatesPage />} />
+        <Route path="/app/rewrite-templates" element={<RewriteTemplatesPage />} />
         <Route path="/app/rules" element={<RulesPage />} />
 
         {/* 发布中心 */}

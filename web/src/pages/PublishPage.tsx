@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { PageHeader, Card, Badge, Button } from '../components/ui';
+import { AIDialog } from '../components/AIDialog';
 import { api } from '../lib/api';
 import { queryKeys, useProducts, usePublishTasks } from '../hooks/useAppQueries';
 import type { PublishTask } from '../lib/api/types';
@@ -112,6 +113,20 @@ export function PublishPage() {
           </Button>
         }
       />
+
+      {/* V4 R3: AI 对话框（发布中心） */}
+      <div className="mb-4">
+        <AIDialog
+          contextHint="例如：把所有 #1 商品的发布任务状态检查一遍；把 #3 商品扩到全部目标；找出来哪些任务重发了同一商品；…"
+          presets={[
+            { id: 'audit', label: '🔍 任务审计', prompt: '扫描所有任务找冲突/重复/失败原因' },
+            { id: 'expand', label: '🌐 扩到全部目标', prompt: '把当前任务扩展到所有可发布的平台/国家' },
+            { id: 'retry', label: '↻ 失败重试', prompt: '对所有失败任务按原参数重试' },
+            { id: 'republish', label: '🔁 重新发布', prompt: '对已发布任务按当前最新改写结果重发' },
+          ]}
+          onSubmit={(p) => `已记录发布指令: "${p}"（本地 mock）`}
+        />
+      </div>
 
       {/* 发布流程说明 */}
       <Card className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
@@ -241,6 +256,65 @@ export function PublishPage() {
 
         {/* 发布任务列表 */}
         <div className="lg:col-span-2">
+          <Card className="mb-3">
+            <h3 className="font-medium mb-2">🌐 多对多管理（V4 R4）</h3>
+            <p className="text-xs text-muted mb-3">
+              按来源商品分组 · 1 个源商品可发往 N 个目标 · 已发可重发 · 支持版本对比
+            </p>
+            {tasks.length === 0 ? (
+              <p className="text-xs text-muted">暂无任务</p>
+            ) : (
+              <div className="space-y-2">
+                {/* 按 productId 分组（若无 productId 则按 title 聚类） */}
+                {Array.from(
+                  tasks.reduce((acc, t) => {
+                    const key = t.productId || t.title;
+                    if (!acc.has(key)) acc.set(key, [] as PublishTask[]);
+                    acc.get(key)!.push(t);
+                    return acc;
+                  }, new Map<string, PublishTask[]>()),
+                ).map(([key, group]) => {
+                  const sample = group[0];
+                  return (
+                    <div key={key} className="rounded-lg border border-[var(--color-border)] p-2">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium truncate max-w-[60%]" title={sample.title}>
+                          📦 {sample.title}
+                        </p>
+                        <span className="text-xs text-muted">已发往 {group.length} 个目标</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {group.map((t) => {
+                          const statusCfg = STATUS_CONFIG[t.status] || STATUS_CONFIG.pending;
+                          return (
+                            <div
+                              key={t.id}
+                              className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-muted)] px-2 py-1 text-xs"
+                            >
+                              <span>{PLATFORM_CONFIG[t.platform]?.flag}</span>
+                              <span>{t.platform}</span>
+                              <Badge tone={statusCfg.tone as 'default' | 'ok' | 'warn'} className="text-[10px]">
+                                {statusCfg.icon}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                        {/* 扩到全部目标按钮 */}
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded border border-dashed border-[var(--color-primary)]/50 px-2 py-1 text-xs text-[var(--color-primary)] hover:bg-[var(--color-primary-soft)]"
+                          onClick={() => alert(`已基于 ${sample.title} 扩展到剩余 4 个可发布目标（mock）`)}
+                        >
+                          + 扩到全部
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
           <Card>
             <h3 className="font-medium mb-4">📋 发布任务列表</h3>
             {tasks.length === 0 ? (
