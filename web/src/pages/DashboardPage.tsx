@@ -1,144 +1,146 @@
+/**
+ * Dashboard / 总览 — V4 重设计版
+ *
+ * 设计依据（[docs/requirements-draft/requirements-draft-v40-mvp-redesign.md §第 1 页]）：
+ *   1. **标准作业流程放最上面**（之前在中部）
+ *   2. **AI 对话框置顶**：用户可在首页发起任何 AI 操作（要选品 / 要分析 / 要改写）
+ *   3. **Hero Banner 合并**：作为流程卡上方的提示条（非独立蓝色区）
+ *   4. **KPI 4 卡逻辑重写**：之前"采集箱/选品候选/今日新增/值得推广"无说明，
+ *      现在改为"按状态机的进度"，逻辑明确：
+ *        ① 已采集 → ② 已选品 → ③ 改写中 → ④ 待上架
+ *      每张卡代表"从采集到上架"漏斗中的一段计数
+ *   5. **快速入口卡片删除**：用户原话"完全没有必要请去掉"
+ *
+ * 数据来源：useMetrics() 保持不变（rawCount / processingCount / publishedCount）
+ *   - rawCount = ① 已采集
+ *   - processingCount = ② 已选品
+ *   - processingCount × 0.6 = ③ 改写中（mock 拆分）
+ *   - publishedCount = ④ 待上架
+ */
 import { Link } from "react-router-dom";
-import { Card, Badge, Button } from "../components/ui";
+import { Card, Badge } from "../components/ui";
 import { WorkflowGuide } from "../components/WorkflowGuide";
-import { ApiModeBanner } from "../components/ApiModeBanner";
+import { AIDialog } from "../components/AIDialog";
 import { downloadExtensionZip } from "../lib/extension";
 import { useMetrics } from "../hooks/useAppQueries";
 import { isDemoMode } from "../lib/demoConfig";
 
-// 当前展示范围（会议 12:00-17:00 共识）：
-// 3 大核心：选品 / 标题优化 / 竞品分析；支撑：采集箱 / 链接直采 / 批量采集
-const QUICK_ACTIONS = [
-  { icon: "🎯", label: "选品", desc: "插件采集 → Skill 分析 → 选品报告", to: "/app/insights" },
-  { icon: "🔍", label: "竞品分析", desc: "输入链接 → 自动分析 → 输出结论", to: "/app/competitors" },
-  { icon: "✏️", label: "标题优化", desc: "导入表格 → 预设规则 → 上架标题", to: "/app/title-optimization" },
-  { icon: "📥", label: "采集箱", desc: "插件/链接/批量采集商品", to: "/app/inbox" },
-  { icon: "🔗", label: "链接直采", desc: "粘贴商品链接一键采集", to: "/app/link-collect" },
-  { icon: "⚡", label: "批量采集", desc: "榜单/搜索页批量入库", to: "/app/batch-collect" },
-];
+// === KPI 漏斗（按状态机分组） ===
 
-const ACTIVITIES = [
-  { time: "今天 10:30", text: "插件采集「韩版童装连衣裙」入采集箱" },
-  { time: "今天 10:25", text: "选品 Skill 分析完成，发掘 3 款值得推广候选" },
-  { time: "今天 09:50", text: "标题优化：导入 50 行 → 输出 48 条上架标题" },
-  { time: "昨天 18:30", text: "竞品分析：输入淘宝商品链接 → 输出结论报告" },
-  { time: "昨天 15:20", text: "批量采集「童装 TOP 榜」30 款入采集箱" },
-];
+const KPI_FUNNEL = [
+  { id: "collected", label: "已采集", desc: "进入采集箱的商品数", color: "from-amber-50 to-orange-50 border-amber-200", icon: "📥" },
+  { id: "selected", label: "已选品", desc: "完成 Skill 分析 · 待改写", color: "from-blue-50 to-sky-50 border-blue-200", icon: "🎯" },
+  { id: "rewriting", label: "改写中", desc: "管线处理中 · 待上架", color: "from-purple-50 to-violet-50 border-purple-200", icon: "✏️" },
+  { id: "published", label: "待上架", desc: "改写完成 · 写入草稿箱", color: "from-green-50 to-emerald-50 border-green-200", icon: "🚀" },
+] as const;
 
 export function DashboardPage() {
   const { data: m, isLoading } = useMetrics();
   const demo = isDemoMode();
-  const stat = (val: number | undefined, suffix = "") =>
-    isLoading ? "—" : (val ?? 0) + suffix;
+  const v = (n: number | undefined, suffix = "") => (isLoading ? "—" : (n ?? 0) + suffix);
 
   return (
-    <div className="space-y-6">
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 p-8 text-white">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-1/2 w-48 h-48 bg-white/5 rounded-full translate-y-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-medium">v3.0 · MVP 范围</span>
-            {demo && <span className="px-2.5 py-0.5 rounded-full bg-amber-400/30 text-xs font-medium">✨ 演示版</span>}
+    <div className="space-y-5">
+      {/* ① AI 对话框（最顶） */}
+      <AIDialog
+        contextHint="例如：帮我从淘宝采集最近 7 天销量 TOP 50 的女童连衣裙；分析这 3 个链接的优劣势；把 inbox 里 #42 商品改写为越南语上架 Shopee…"
+        presets={[
+          { id: "collect", label: "📥 采集热销品", prompt: "采集当前热销品入采集箱" },
+          { id: "select", label: "🎯 跑选品分析", prompt: "对采集箱内的商品运行选品分析" },
+          { id: "rewrite", label: "✏️ 批量改写", prompt: "对已选品结果批量改写" },
+          { id: "publish", label: "🚀 写入草稿箱", prompt: "把改写完成的商品写入目标平台草稿箱" },
+        ]}
+        onSubmit={(p) =>
+          `已收到指令: "${p}"\n\n提示：当前为前端 mock，未接通后端 Skill 时会先解析为本地动作建议。完整执行需要后端 Skill + 浏览器插件。`
+        }
+      />
+
+      {/* ② Hero 提示条（合并态） */}
+      <Card className="bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-indigo-200/50 py-3 px-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Badge tone="ok">v4 · V3 管道</Badge>
+            <span className="text-[var(--color-text)]">
+              电商助手 · 端到端流水线: <strong>采集 → 选品 → 改写 → 上架</strong>
+            </span>
+            {demo && <Badge tone="warn">演示版</Badge>}
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">电商助手</h1>
-          <p className="mt-2 text-white/70 max-w-md">
-            当前展示范围：选品 · 竞品分析 · 标题优化 — 插件采集 → 后端 Skill 分析 → 报告输出
-          </p>
-          <div className="flex gap-3 mt-6">
-            <Link to="/app/insights">
-              <Button className="bg-white text-indigo-700 hover:bg-white/90 font-medium shadow-lg">开始选品</Button>
+          <div className="flex gap-2">
+            <Link
+              to="/app/insights"
+              className="rounded-lg bg-[var(--color-primary)] px-3 py-1 text-xs text-[var(--color-primary-fg)] font-medium hover:opacity-90"
+            >
+              开始选品
             </Link>
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10" onClick={downloadExtensionZip}>下载插件</Button>
+            <button
+              type="button"
+              onClick={downloadExtensionZip}
+              className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1 text-xs hover:bg-[var(--color-muted)]"
+            >
+              下载插件
+            </button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "采集箱", value: stat(m?.rawCount), sub: "已采集商品", color: "from-amber-50 to-orange-50 border-amber-200", icon: "📦" },
-          { label: "选品候选", value: stat(m?.processingCount), sub: "Skill 分析中", color: "from-blue-50 to-sky-50 border-blue-200", icon: "🎯" },
-          { label: "今日新增", value: stat(m ? Math.floor(m.rawCount * 0.3) : undefined), sub: "今日采集", color: "from-purple-50 to-violet-50 border-purple-200", icon: "☁️" },
-          { label: "值得推广", value: stat(m?.publishedCount), sub: "选品结论命中", color: "from-green-50 to-emerald-50 border-green-200", icon: "✅" },
-        ].map((kpi) => (
-          <Card key={kpi.label} className={"border bg-gradient-to-br " + kpi.color}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-[var(--color-text-muted)]">{kpi.label}</span>
-              <span className="text-xl">{kpi.icon}</span>
-            </div>
-            <div className="text-2xl font-bold">{kpi.value}</div>
-            <div className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.sub}</div>
-          </Card>
-        ))}
-      </div>
+      {/* ③ 标准作业流程（最上面） */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">📍 标准作业流程</h3>
+          <span className="text-xs text-[var(--color-text-muted)]">4 步 · 端到端</span>
+        </div>
+        <WorkflowGuide />
+      </Card>
 
-      {/* Quick Actions + Workflow */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Quick Actions */}
-        <Card className="lg:col-span-1">
-          <h3 className="font-semibold mb-4">快速入口</h3>
-          <div className="space-y-2">
-            {QUICK_ACTIONS.map((a) => (
-              <Link key={a.label} to={a.to} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--color-muted)] transition group">
-                <span className="text-2xl group-hover:scale-110 transition">{a.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm">{a.label}</div>
-                  <div className="text-xs text-[var(--color-text-muted)] truncate">{a.desc}</div>
-                </div>
-                <span className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition">→</span>
-              </Link>
-            ))}
-          </div>
-        </Card>
-
-        {/* Workflow */}
-        <Card className="lg:col-span-2">
-          <h3 className="font-semibold mb-4">标准作业流程</h3>
-          <WorkflowGuide />
-        </Card>
-      </div>
-
-      {/* Activity Feed + Focus */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <h3 className="font-semibold mb-4">近期活动</h3>
-          <div className="space-y-4">
-            {ACTIVITIES.map((a, i) => (
-              <div key={i} className="flex gap-3">
-                <div className="relative flex flex-col items-center">
-                  <div className="w-2 h-2 rounded-full bg-[var(--color-primary)] mt-1.5" />
-                  {i < ACTIVITIES.length - 1 && <div className="w-px flex-1 bg-[var(--color-border)] mt-1" />}
-                </div>
-                <div className="flex-1 pb-1">
-                  <p className="text-sm">{a.text}</p>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-1">{a.time}</p>
-                </div>
+      {/* ④ KPI 漏斗（按状态机分组） */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {KPI_FUNNEL.map((kpi, i) => {
+          let value: number | undefined;
+          if (kpi.id === "collected") value = m?.rawCount;
+          else if (kpi.id === "selected") value = m?.processingCount;
+          else if (kpi.id === "rewriting") value = m ? Math.floor(m.processingCount * 0.6) : undefined;
+          else if (kpi.id === "published") value = m?.publishedCount;
+          return (
+            <Card key={kpi.id} className={`border bg-gradient-to-br ${kpi.color} relative`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                  步骤 {i + 1} · {kpi.label}
+                </span>
+                <span className="text-xl">{kpi.icon}</span>
               </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card>
-          <h3 className="font-semibold mb-4">当前聚焦</h3>
-          <div className="space-y-4">
-            {[
-              { title: "选品", desc: "童装 / T恤类目 · 后端 Skill 分析 · 输出值得推广候选", icon: "🎯" },
-              { title: "标题优化", desc: "导入表格 → 预设规则（去废词 / 补热搜）→ 上架标题", icon: "✏️" },
-              { title: "竞品分析", desc: "输入商品链接 → 自动分析 → 输出结论", icon: "🔍" },
-            ].map((item) => (
-              <div key={item.title} className="p-4 rounded-xl bg-[var(--color-muted)]">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="font-medium text-sm">{item.title}</span>
-                </div>
-                <p className="text-xs text-[var(--color-text-muted)]">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </Card>
+              <div className="text-2xl font-bold">{v(value)}</div>
+              <div className="text-xs text-[var(--color-text-muted)] mt-1">{kpi.desc}</div>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* ⑤ 最近活动（保留） */}
+      <Card>
+        <h3 className="font-semibold mb-3">📝 最近活动</h3>
+        <ul className="space-y-2 text-sm">
+          <li className="flex justify-between border-b border-[var(--color-border)] pb-2">
+            <span>插件采集「韩版童装连衣裙」入采集箱</span>
+            <span className="text-xs text-[var(--color-text-muted)]">今天 10:30</span>
+          </li>
+          <li className="flex justify-between border-b border-[var(--color-border)] pb-2">
+            <span>选品 Skill 分析完成：发掘 3 款值得推广候选</span>
+            <span className="text-xs text-[var(--color-text-muted)]">今天 10:25</span>
+          </li>
+          <li className="flex justify-between border-b border-[var(--color-border)] pb-2">
+            <span>标题优化：导入 50 行 → 输出 48 条上架标题</span>
+            <span className="text-xs text-[var(--color-text-muted)]">今天 09:50</span>
+          </li>
+          <li className="flex justify-between border-b border-[var(--color-border)] pb-2">
+            <span>竞品分析：输入淘宝商品链接 → 输出结论报告</span>
+            <span className="text-xs text-[var(--color-text-muted)]">昨天 18:30</span>
+          </li>
+          <li className="flex justify-between">
+            <span>批量采集「童装 TOP 榜」30 款入采集箱</span>
+            <span className="text-xs text-[var(--color-text-muted)]">昨天 15:20</span>
+          </li>
+        </ul>
+      </Card>
     </div>
   );
 }
