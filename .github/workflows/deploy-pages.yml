@@ -29,7 +29,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: web/package-lock.json
+        cache-dependency-path: web/package-lock.json
 
       - name: Install
         run: npm ci
@@ -38,7 +38,7 @@ jobs:
         env:
           # GitHub Pages project URL: https://<user>.github.io/<repo>/
           VITE_BASE_PATH: ${{ github.event.repository.name }}
-        run: npx vite build
+        run: npm run build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -52,4 +52,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
