@@ -126,7 +126,7 @@ Porting 时不要 `git mv`，直接 `cp` 后再改造，避免跨分支 history 
 **type 类型**：
 | type | 用途 | 例子 |
 |------|------|------|
-| `feat` | 新功能 | `feat(insights): 增加 3 步 Skill 流程展示` |
+| `feat` | 新功能 | `feat(insights): 增加 3 步管线流程展示` |
 | `fix` | 修复 bug | `fix(dashboard): 修复中文转义乱码` |
 | `refactor` | 重构（无功能变化） | `refactor(title): 抽离 rule-engine 抽象层` |
 | `chore` | 杂项（依赖、配置、CI） | `chore(deps): 升级 react-query v5` |
