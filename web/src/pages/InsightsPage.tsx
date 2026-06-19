@@ -1,25 +1,66 @@
 /**
- * 选品 - 会议 12:00-17:00 共识版本
+ * 选品 - V4 重设计版
  *
- * 完整流程（来自会议原文）：
- *   1. 下载/安装插件（Bing 提供的浏览器插件）
- *      → 自动安装或半自动安装
- *   2. 采集数据（插件在源站详情页采集 / 链接直采 / 批量采集）
- *      → 注意反爬 / 风控问题（阿里系普遍存在）
- *   3. 数据进入后端 → 入库
- *   4. 后端 Skill 流程：第一步 → 第二步，按维度（GMV / CTR / 同款数 / 价格等）评估
- *   5. 输出选品结论：报告 / 表单，告诉用户哪些品值得推广
+ * 设计依据（[docs/requirements-draft/requirements-draft-v40-mvp-redesign.md §第 2 页]）：
+ *   1. 顶部加 AI 对话框（其他页一致）
+ *   2. **选品模板放出来**：之前藏在设置里，现在暴露在选品页（用户可见）
+ *      - 模板按国家/类目划分
+ *      - 用户可查看当前生效的选品规则
+ *   3. 保留原有四步流程可视化 + 选品报告
  *
- * 此页面 = 上述流程的「可视化 + 触发 + 结果」三合一：
- *   - 上半部分：流程状态（插件 / 采集 / 分析进度）
- *   - 中间：触发按钮（一键运行分析）
- *   - 下半部分：选品结论报告（哪些值得推广）
+ * 模板入口说明：
+ *   - 选品模板是 Skill 流程的参数集（GMV 阈值 / CTR 阈值 / 同款数 / 价格段 等）
+ *   - 模板数据来自后端 /api/selection-templates，本地 mock 提供 3 个国家的示例
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader, Card, Button, Badge } from '../components/ui';
+import { AIDialog } from '../components/AIDialog';
 import { downloadExtensionZip } from '../lib/extension';
 import { useInsight } from '../hooks/useAppQueries';
+
+// === 选品模板（V4 新增：暴露给前端） ===
+
+type SelectionTemplate = {
+  id: string;
+  name: string;
+  market: string;
+  category: string;
+  thresholds: {
+    minGmv: number;
+    minCtr: number;
+    maxSameProduct: number;
+    priceRange: [number, number];
+  };
+  active: boolean;
+};
+
+const MOCK_TEMPLATES: SelectionTemplate[] = [
+  {
+    id: 't-vn-kids',
+    name: '越南 · 童装',
+    market: '越南',
+    category: '童装',
+    thresholds: { minGmv: 30000, minCtr: 9, maxSameProduct: 5, priceRange: [15, 60] },
+    active: true,
+  },
+  {
+    id: 't-th-female',
+    name: '泰国 · 女装',
+    market: '泰国',
+    category: '女装',
+    thresholds: { minGmv: 25000, minCtr: 8, maxSameProduct: 6, priceRange: [10, 50] },
+    active: false,
+  },
+  {
+    id: 't-br-3c',
+    name: '巴西 · 3C',
+    market: '巴西',
+    category: '3C 数码',
+    thresholds: { minGmv: 50000, minCtr: 10, maxSameProduct: 4, priceRange: [40, 200] },
+    active: false,
+  },
+];
 
 // === 模拟数据 ===
 
@@ -180,6 +221,50 @@ export function InsightsPage() {
         title="选品"
         desc="插件采集 → 后端 Skill 分析（多维度）→ 输出值得推广候选"
       />
+
+      {/* AI 对话框（V4 新增） */}
+      <AIDialog
+        contextHint="例如：帮我按越南童装模板筛选采集箱内的商品；把 #12 和 #35 加入对比分析；导出值得推广候选…"
+        presets={[
+          { id: 'run-template', label: '🎯 按当前模板跑选品', prompt: '用当前激活的选品模板分析采集箱' },
+          { id: 'switch', label: '🌏 切换选品模板', prompt: '切换到其他市场的选品模板' },
+          { id: 'export', label: '📤 导出候选', prompt: '把值得推广候选导出为 CSV' },
+        ]}
+        onSubmit={(p) => `已记录选品指令: "${p}"（本地 mock，未接通 Skill）`}
+      />
+
+      {/* 选品模板（V4 新增：暴露给前端） */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-medium">📋 选品模板（按国家/类目）</h3>
+          <Link to="/app/settings" className="text-xs text-[var(--color-primary)] hover:underline">
+            管理模板 →
+          </Link>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {MOCK_TEMPLATES.map((tpl) => (
+            <div
+              key={tpl.id}
+              className={`rounded-lg border p-3 ${
+                tpl.active
+                  ? 'border-[var(--color-primary)] bg-[var(--color-primary-soft)]'
+                  : 'border-[var(--color-border)]'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-medium text-sm">{tpl.name}</span>
+                {tpl.active && <Badge tone="ok">当前</Badge>}
+              </div>
+              <div className="text-xs text-[var(--color-text-muted)] space-y-1">
+                <div>GMV ≥ ${tpl.thresholds.minGmv.toLocaleString()}</div>
+                <div>CTR ≥ {tpl.thresholds.minCtr}%</div>
+                <div>同款 ≤ {tpl.thresholds.maxSameProduct}</div>
+                <div>价格 ${tpl.thresholds.priceRange[0]}–${tpl.thresholds.priceRange[1]}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       {/* 流程面板：四步状态 */}
       <Card>
