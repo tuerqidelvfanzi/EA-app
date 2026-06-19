@@ -47,7 +47,7 @@ export function App() {
         <Route path="/app/title-optimization" element={<TitleOptimizationPage />} />
         <Route path="/app/inbox" element={<InboxPage />} />
         <Route path="/app/link-collect" element={<LinkCollectPage />} />
-        <Route path="/app/batch-collect" element={<BatchCollectPage />} />
+        <Route path="/app/batch-collect" element={<Navigate to="/app/link-collect" replace />} />
 
         {/* 配置中心 */}
         <Route path="/app/templates" element={<TemplatesPage />} />
