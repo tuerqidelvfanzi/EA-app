@@ -6,12 +6,16 @@
  *   - 提示词输入 + 大模型处理结果显示
  *   - 操作基于浏览器插件
  *
+ * V4.2 修订（基于 AIDialog 用户反馈 — 新消息总是出现在最下端）：
+ *   - 修复"双反向"bug：去掉 reversed 数组，只用 flex-col-reverse（CSS 翻一次）
+ *   - DOM 顺序保持正序（oldest→newest），视觉倒序（newest 在顶部）
+ *   - 新消息到来时 useEffect 把 scrollTop 推到 scrollHeight
+ *     * flex-col-reverse 下，scrollHeight 对应"视觉顶部"
+ *     * 新消息自动露在最上面，用户视线不用动
+ *
  * V4.1 修订：
  *   - 移除重复的 🤖 图标（title prop 不再含 emoji，单独一个 span 显示）
  *   - 移除 "AI 原生" 徽标（标题统一为 "AI 操作台"）
- *   - 消息顺序改为「倒序」（最新在顶部，旧的向下推）
- *     * 用户阅读位置不变，新消息直接出现在对话顶部
- *     * 历史消息向下排列，可滚动查看
  *
  * 状态机：idle（空） → composing（输入中） → running（执行中） → result（结果）
  */
@@ -43,11 +47,14 @@ export function AIDialog({ contextHint, onSubmit, presets, title = 'AI 操作台
   const [composing, setComposing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 倒序展示：最新在顶部。DOM 顺序保持正序，CSS flex-col-reverse 让视觉倒过来。
-  // 这样新增消息自然出现在"顶部位置"（用户阅读的当前位置），无需 auto-scroll。
-  const reversed = [...messages].reverse();
-
-  // 不主动 scrollIntoView，让用户保留自己的阅读位置
+  // 视觉倒序：DOM 顺序保持正序（oldest → newest），CSS flex-col-reverse 让视觉倒过来（newest 在顶部）。
+  // 新消息到来时用 useEffect 把 scrollTop 推到 scrollHeight，让新消息自动露在视觉顶部。
+  useEffect(() => {
+    if (scrollRef.current && messages.length > 0) {
+      // flex-col-reverse 下，scrollTop 语义反转：scrollHeight 对应"视觉顶部"（newest）
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages.length]);
 
   async function send(rawPrompt?: string) {
     const text = (rawPrompt ?? prompt).trim();
@@ -140,14 +147,14 @@ export function AIDialog({ contextHint, onSubmit, presets, title = 'AI 操作台
         提示: Cmd/Ctrl + Enter 发送 · 数据通过浏览器插件采集
       </p>
 
-      {/* 对话历史（倒序：最新在顶部） */}
+      {/* 对话历史（视觉倒序：最新在顶部） */}
       {messages.length > 0 && (
         <div
           ref={scrollRef}
           className="mt-3 border-t border-[var(--color-border)] pt-3 flex flex-col-reverse gap-2 max-h-80 overflow-y-auto"
         >
-          {/* 用 reversed 让最新消息在顶部；插入新消息时不会触发 scroll */}
-          {reversed.map((m) =>
+          {/* 直接 map messages（DOM 正序），flex-col-reverse 负责视觉反转 */}
+          {messages.map((m) =>
             m.role === 'user' ? (
               <div key={m.id} className="flex justify-end">
                 <div className="max-w-[80%] rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-fg)] px-3 py-2 text-sm">
